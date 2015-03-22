@@ -1,0 +1,69 @@
+---
+title: "Practical Machine Leaning Course Project"
+author: "Stasha"
+date: "March 21, 2015"
+output: html_document
+---
+
+Our goal is to predict the quality (class) of barbell lift performance using data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants [1]. Class A corresponds to the correct execution of a Unilateral Dumbbell Biceps Curl, while the other 4 classes correspond to common mistakes.
+
+###1. Download and Clean the Data
+
+We begin by reading in the training and test set data.
+```{r}
+if (!file.exists("train.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+                  destfile = "train.csv")
+}
+    
+if (!file.exists("test.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                    destfile = "test.csv")
+}
+    
+train <- read.csv("train.csv", na.strings = c("NA",""))
+test <- read.csv("test.csv", na.strings = c("NA",""))
+```
+
+Remove variables 1:7 which are not readings from the accelerometers.
+```{r}
+train1 <- train[,8:160]
+test1 <- test[,8:160]
+```
+
+Remove variables containing NAs.
+```{r}
+train2 <- train1[,(colSums(is.na(train1)) == 0)]
+test2 <- test1[,(colSums(is.na(test1)) == 0)]
+```
+
+###2. Fit the Model Using the Training Test
+We will perform the classifcation using random forests. Random forests improve predictive accuracy by generating a large number of bootstrapped trees (based on random samples of variables), classifying a case using each tree in this new "forest", and deciding a final predicted outcome by combining the results across all of the trees (a majority vote in classification).
+
+```{r}
+library(randomForest)
+set.seed(1432)
+rf.fit <- randomForest(classe~., data=train2, importance=TRUE)
+```
+
+###3. Make Predictions on the Test Set
+```{r}
+tree.pred <- predict(rf.fit, test2, type="class")
+tree.pred2 <- as.character(tree.pred)
+```
+
+###4. Estimate Out of Sample Error Using Cross Validation
+In random forests, there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. It is estimated internally, during the run, as follows:
+
+Each tree is constructed using a different bootstrap sample from the original data. About one-third of the cases are left out of the bootstrap sample and not used in the construction of the kth tree.
+
+Put each case left out in the construction of the kth tree down the kth tree to get a classification. In this way, a test set classification is obtained for each case in about one-third of the trees. At the end of the run, take j to be the class that got most of the votes every time case n was oob. The proportion of times that j is not equal to the true class of n averaged over all cases is the oob error estimate. This has proven to be unbiased in many tests.
+
+```{r}
+rf.fit
+```
+The confusion matrix compares actual to predicted classes. The OOB estimate of error rate is 0.27%.
+
+## References
+
+1. Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
